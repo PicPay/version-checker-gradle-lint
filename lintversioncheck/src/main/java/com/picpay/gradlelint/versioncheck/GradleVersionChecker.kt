@@ -2,6 +2,7 @@ package com.picpay.gradlelint.versioncheck
 
 import com.android.tools.lint.detector.api.*
 import java.io.File
+import java.util.*
 
 
 @Suppress("UnstableApiUsage")
@@ -17,7 +18,6 @@ class GradleVersionChecker : Detector(), Detector.GradleScanner {
         statementCookie: Any
     ) {
         if (parent == DEPENDENCIES && isCustomDependencyDeclaration(value)) {
-
             val library = getLibraryFromDependency(context, value)
 
             VersionRemoteDataSource(context.client)
@@ -36,15 +36,19 @@ class GradleVersionChecker : Detector(), Detector.GradleScanner {
         context: GradleContext,
         value: String
     ): Library {
-        val currentProject = context.project.dir.absolutePath
 
-        val root = File(currentProject).parentFile.absolutePath
+        val buildSrc = findBuildSrc(context.project.dir)
 
-        val buildSrc = "buildSrc/src/main/java/Dependencies.kt"
+        checkNotNull(buildSrc) { "buildSrc module not found." }
 
         val definition = mutableListOf<String>()
 
-        File(root, buildSrc).readLines().forEach { line ->
+        val dependenciesFileLines: List<String> = File(
+            buildSrc.absolutePath,
+            "src/main/java/Dependencies.kt"
+        ).readLines()
+
+        for (line in dependenciesFileLines) {
             if (line.contains(value.split(".")[1])) {
                 val cleared = line.split("=")[1].trim()
                 val artifact = cleared.split("$").firstOrNull()
@@ -53,17 +57,47 @@ class GradleVersionChecker : Detector(), Detector.GradleScanner {
                 } else {
                     definition.add(cleared.replace("\"", ""))
                 }
+                if (definition.size == 2) break
             }
         }
         return (definition[0] + definition[1]).toLibrary()
+    }
+
+    private fun readVersionLintProperties(projectDir: File): Properties {
+        val versionLintProperties = File(findBuildSrc(projectDir), LINT_PROPERTIES)
+        return Properties().apply { load(versionLintProperties.inputStream()) }
     }
 
     private fun isCustomDependencyDeclaration(value: String): Boolean {
         return value.startsWith("Dependencies.")
     }
 
+    private fun findBuildSrc(currentProjectDir: File): File? {
+        var dir: String? = currentProjectDir.parentFile?.absolutePath
+        while (dir != null) {
+            val currentDir = File(dir)
+
+            val containsBuildSrc = currentDir.listFiles()
+                ?.asList()
+                ?.any { it.name == BUILD_SRC_MODULE }
+                ?: false
+
+            if (containsBuildSrc) {
+                return File(currentDir.absolutePath, BUILD_SRC_MODULE)
+            } else {
+                dir = currentDir.parentFile?.absolutePath
+            }
+        }
+        return null
+    }
+
     companion object {
 
+        private const val LINT_PROPERTIES = "versionlint.properties"
+        private const val LINT_DEPENDENCIES_PROPERTY = "versionlint.dependencies"
+        private const val LINT_VERSIONS_PROPERTY = "versionlint.versions"
+
+        private const val BUILD_SRC_MODULE = "buildSrc"
         private const val DEPENDENCIES = "dependencies"
 
         private val IMPLEMENTATION = Implementation(
