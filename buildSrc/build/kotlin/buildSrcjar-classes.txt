@@ -1,0 +1,1 @@
+/Users/jeziellago/Documents/workspace/GradleLint/buildSrc/build/classes/kotlin/main/Dependencies.class:/Users/jeziellago/Documents/workspace/GradleLint/buildSrc/build/classes/kotlin/main/Versions.class
