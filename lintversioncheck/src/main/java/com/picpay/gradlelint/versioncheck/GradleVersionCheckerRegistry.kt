@@ -9,4 +9,7 @@ class GradleVersionCheckerRegistry: IssueRegistry() {
     override val issues: List<Issue>
         get() = listOf(REMOTE_VERSION)
 
+    override val api: Int
+        get() = com.android.tools.lint.detector.api.CURRENT_API
+
 }
