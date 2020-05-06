@@ -10,6 +10,11 @@ internal data class Library(
     }
 }
 
+internal fun Library.isGoogleLib(): Boolean {
+    return groupId.startsWith("android") ||
+            groupId.startsWith("com.google")
+}
+
 internal fun String.toLibrary(): Library {
     val definition = this.split(":")
     return Library(

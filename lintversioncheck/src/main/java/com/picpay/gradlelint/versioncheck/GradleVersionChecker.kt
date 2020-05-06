@@ -17,18 +17,24 @@ class GradleVersionChecker : Detector(), Detector.GradleScanner {
         valueCookie: Any,
         statementCookie: Any
     ) {
-        if (parent == DEPENDENCIES && isCustomDependencyDeclaration(value)) {
-            val library = getLibraryFromDependency(context, value)
-
-            VersionRemoteDataSource(context.client)
-                .getNewVersionAvailable(library)
-                ?.let { newLibrary ->
-                    context.report(
-                        REMOTE_VERSION,
-                        context.getLocation(valueCookie),
-                        "New version available: $newLibrary\nActual: $library"
-                    )
-                }
+        if (parent == DEPENDENCIES && isCustomDependencyDeclaration(context, value)) {
+            try {
+                val library = getLibraryFromDependency(context, value)
+                VersionRemoteDataSource(context.client).getNewVersionAvailable(library)
+                    ?.let { newLibrary ->
+                        context.report(
+                            REMOTE_VERSION,
+                            context.getLocation(valueCookie),
+                            "New version available: $newLibrary\nActual: $library"
+                        )
+                    }
+            } catch (e: Throwable) {
+                context.report(
+                    REMOTE_VERSION,
+                    context.getLocation(valueCookie),
+                    e.toString()
+                )
+            }
         }
     }
 
@@ -55,11 +61,16 @@ class GradleVersionChecker : Detector(), Detector.GradleScanner {
         )
 
         val definition = mutableListOf<String>()
-
-        for (line in dependenciesFile.readLines()) {
+        val dependenciesFileLines = dependenciesFile.readLines()
+        dependenciesFileLines.forEachIndexed { index, line ->
             val dependencyVarName = value.split(".")[1]
-            if (line.tokenize().contains(dependencyVarName)) {
-                val dependency = line.split("=")[1].trim()
+            if (line.tokenize().contains(dependencyVarName) && line.contains("=")) {
+
+                val dependency = if (!line.contains("$")) {
+                    dependenciesFileLines[index + 1].removeComments().trim()
+                } else {
+                    line.split("=")[1].removeComments().trim()
+                }
                 val dependencyCleaned = dependency.split("$")
 
                 definition.add(dependencyCleaned[0].replace("\"", ""))
@@ -72,7 +83,7 @@ class GradleVersionChecker : Detector(), Detector.GradleScanner {
                 }
 
                 definition.add(versionNumber.replace("\"", ""))
-                break
+                return@forEachIndexed
             }
         }
         return (definition[0] + definition[1]).toLibrary()
@@ -83,14 +94,17 @@ class GradleVersionChecker : Detector(), Detector.GradleScanner {
         return Properties().apply {
             if (!versionLintProperties.exists()) {
                 put(LINT_DEPENDENCIES_PROPERTY, "Dependencies")
+                put(LINT_SUFFIX_PROPERTY, "Libs")
                 store(versionLintProperties.outputStream(), "Gradle Versions Lint")
             }
             load(versionLintProperties.inputStream())
         }
     }
 
-    private fun isCustomDependencyDeclaration(value: String): Boolean {
-        return value.startsWith("Dependencies.")
+    private fun isCustomDependencyDeclaration(context: GradleContext, value: String): Boolean {
+        val suffix = readVersionLintProperties(context.project.dir)
+            .getProperty(LINT_SUFFIX_PROPERTY)
+        return value.contains("$suffix.")
     }
 
     private fun findBuildSrc(currentProjectDir: File): File? {
@@ -113,7 +127,16 @@ class GradleVersionChecker : Detector(), Detector.GradleScanner {
     }
 
     private fun String.tokenize(delimiter: String = " "): List<String> {
-        return this.split(delimiter).map { it.trim() }
+        return this.split(delimiter)
+            .map { it.replace("\n", "").trim() }
+    }
+
+    private fun String.removeComments(): String {
+        return if (contains("//")) {
+            split("//")[0]
+        } else {
+            this
+        }
     }
 
     private fun String.getVarNameInVersionDeclaration(): String {
@@ -140,6 +163,7 @@ class GradleVersionChecker : Detector(), Detector.GradleScanner {
 
         private const val LINT_PROPERTIES = "versionlint.properties"
         private const val LINT_DEPENDENCIES_PROPERTY = "versionlint.dependencies.file"
+        private const val LINT_SUFFIX_PROPERTY = "versionlint.dependencies.suffix"
         private const val LINT_VERSIONS_PROPERTY = "versionlint.versions.file"
 
         private const val BUILD_SRC_MODULE = "buildSrc"
