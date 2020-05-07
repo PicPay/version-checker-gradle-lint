@@ -1,4 +1,4 @@
-package com.picpay.gradlelint.versioncheck
+package com.picpay.gradlelint.versioncheck.library
 
 internal data class Library(
     val groupId: String,

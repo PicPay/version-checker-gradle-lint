@@ -1,12 +1,20 @@
 package com.picpay.gradlelint.versioncheck
 
+import com.android.tools.lint.client.api.LintClient
 import com.android.tools.lint.detector.api.*
+import com.picpay.gradlelint.versioncheck.cleaner.removeComments
+import com.picpay.gradlelint.versioncheck.cleaner.tokenize
+import com.picpay.gradlelint.versioncheck.library.Library
+import com.picpay.gradlelint.versioncheck.library.toLibrary
+import com.picpay.gradlelint.versioncheck.remote.repositories.MavenRemoteRepositoryHandler
 import java.io.File
 import java.util.*
 
 
 @Suppress("UnstableApiUsage")
-class GradleVersionChecker : Detector(), Detector.GradleScanner {
+class VersionChecker : Detector(), Detector.GradleScanner {
+
+    private var repositoryHandler: MavenRemoteRepositoryHandler? = null
 
     override fun checkDslPropertyAssignment(
         context: GradleContext,
@@ -20,7 +28,7 @@ class GradleVersionChecker : Detector(), Detector.GradleScanner {
         if (parent == DEPENDENCIES && isCustomDependencyDeclaration(context, value)) {
             try {
                 val library = getLibraryFromDependency(context, value)
-                VersionRemoteDataSource(context.client).getNewVersionAvailable(library)
+                getRepositoryHandler(context.client).getNewVersionAvailable(library)
                     ?.let { newLibrary ->
                         context.report(
                             REMOTE_VERSION,
@@ -67,19 +75,19 @@ class GradleVersionChecker : Detector(), Detector.GradleScanner {
             if (line.tokenize().contains(dependencyVarName) && line.contains("=")) {
 
                 val dependency = if (!line.contains("$")) {
-                    dependenciesFileLines[index + 1].removeComments().trim()
+                    dependenciesFileLines[index + 1].removeComments()
                 } else {
-                    line.split("=")[1].removeComments().trim()
+                    line.split("=")[1].removeComments()
                 }
                 val dependencyCleaned = dependency.split("$")
 
-                definition.add(dependencyCleaned[0].replace("\"", ""))
+                definition.add(dependencyCleaned[0].replace("\"", "").trim())
 
                 val versionVarName = dependencyCleaned[1].getVarNameInVersionDeclaration()
                 val versionNumber = if (versionVarName != dependencyVarName) {
                     getVersionValueFromFile(dependenciesFile, versionVarName)
                 } else {
-                    dependencyCleaned[0]
+                    dependencyCleaned[0].trim()
                 }
 
                 definition.add(versionNumber.replace("\"", ""))
@@ -126,19 +134,6 @@ class GradleVersionChecker : Detector(), Detector.GradleScanner {
         return null
     }
 
-    private fun String.tokenize(delimiter: String = " "): List<String> {
-        return this.split(delimiter)
-            .map { it.replace("\n", "").trim() }
-    }
-
-    private fun String.removeComments(): String {
-        return if (contains("//")) {
-            split("//")[0]
-        } else {
-            this
-        }
-    }
-
     private fun String.getVarNameInVersionDeclaration(): String {
         return replace("{", "")
             .replace("}", "")
@@ -159,6 +154,14 @@ class GradleVersionChecker : Detector(), Detector.GradleScanner {
         )
     }
 
+    private fun getRepositoryHandler(client: LintClient): MavenRemoteRepositoryHandler {
+        return repositoryHandler ?: run {
+            MavenRemoteRepositoryHandler(client).also { handler ->
+                repositoryHandler = handler
+            }
+        }
+    }
+
     companion object {
 
         private const val LINT_PROPERTIES = "versionlint.properties"
@@ -170,7 +173,7 @@ class GradleVersionChecker : Detector(), Detector.GradleScanner {
         private const val DEPENDENCIES = "dependencies"
 
         private val IMPLEMENTATION = Implementation(
-            GradleVersionChecker::class.java,
+            VersionChecker::class.java,
             Scope.GRADLE_SCOPE
         )
 
