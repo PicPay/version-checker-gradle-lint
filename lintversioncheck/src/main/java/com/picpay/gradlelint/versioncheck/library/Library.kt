@@ -23,3 +23,10 @@ internal fun String.toLibrary(): Library {
         version = definition[2]
     )
 }
+
+internal fun String.mapToNewVersionFromLibraryOrNull(actualLibrary: Library): Library? {
+    val latestVersion = this
+    return if (latestVersion != actualLibrary.version) {
+        actualLibrary.copy(version = latestVersion)
+    } else null
+}

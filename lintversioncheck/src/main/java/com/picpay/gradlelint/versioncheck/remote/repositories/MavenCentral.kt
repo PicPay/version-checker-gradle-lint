@@ -1,43 +1,45 @@
 package com.picpay.gradlelint.versioncheck.remote.repositories
 
+import com.google.gson.Gson
+import com.picpay.gradlelint.versioncheck.extensions.firstReleaseVersion
 import com.picpay.gradlelint.versioncheck.library.Library
+import com.picpay.gradlelint.versioncheck.library.mapToNewVersionFromLibraryOrNull
 import com.picpay.gradlelint.versioncheck.remote.api.ApiClient
 import com.picpay.gradlelint.versioncheck.remote.api.MavenRemoteRequest
 import java.net.URL
-import java.net.URLEncoder
 
 internal class MavenCentral(client: ApiClient) : MavenRemoteRepository(client) {
+
+    private data class MavenCentralResponse(val response: MavenCentralResponseDocs)
+
+    private data class MavenCentralResponseDocs(val docs: List<MavenCentralVersion>)
+
+    private data class MavenCentralVersion(val v: String)
 
     override fun getNewVersionOrNull(
         actualLibrary: Library,
         responseBody: String
-    ): Library? {
-        var index = responseBody.indexOf("\"response\"")
+    ): Library? = try {
 
-        while (index != -1) {
-            index = responseBody.indexOf("\"v\":", index)
-            if (index != -1) {
-                index += 4
-                val start = responseBody.indexOf('"', index) + 1
-                val end = responseBody.indexOf('"', start + 1)
-                if (start in 0 until end) {
-                    val versionAvailable = (responseBody.substring(start, end))
-                    if (versionAvailable != actualLibrary.version) {
-                        return actualLibrary.copy(version = versionAvailable)
-                    }
-                }
-            }
+        val mavenCentralResponse = Gson().fromJson(responseBody, MavenCentralResponse::class.java)
+        val versions = mavenCentralResponse.response.docs
+
+        if (versions.isEmpty()) null
+        else {
+            versions.map { version -> version.v }
+                .firstReleaseVersion()
+                ?.mapToNewVersionFromLibraryOrNull(actualLibrary)
         }
-        return null
+    } catch (e: Throwable) {
+        null
     }
 
     override fun createQueryFromLibrary(library: Library): MavenRemoteRequest {
-        val encoding = "UTF-8"
         val query = StringBuilder()
             .append("http://search.maven.org/solrsearch/select?q=g:%22")
-            .append(URLEncoder.encode(library.groupId, encoding))
+            .append(library.groupId)
             .append("%22+AND+a:%22")
-            .append(URLEncoder.encode(library.artifactId, encoding))
+            .append(library.artifactId)
             .append("%22&core=gav")
             .append("&rows=1")
             .append("&wt=json")

@@ -1,22 +1,22 @@
 package com.picpay.gradlelint.versioncheck.remote.repositories
 
-import com.android.tools.lint.client.api.LintClient
 import com.picpay.gradlelint.versioncheck.library.Library
 import com.picpay.gradlelint.versioncheck.library.isGoogleLib
 import com.picpay.gradlelint.versioncheck.remote.api.ApiClient
 
 @Suppress("UnstableApiUsage")
-internal class MavenRemoteRepositoryHandler(private val client: LintClient) {
+internal class MavenRemoteRepositoryHandler(private val apiClient: ApiClient) {
+
+    private val google by lazy { GoogleMaven(apiClient) }
+    private val mavenCentral by lazy { MavenCentral(apiClient) }
+    private val jcenter by lazy { JCenter(apiClient) }
 
     fun getNewVersionAvailable(library: Library): Library? {
-        val apiClient = ApiClient(client)
-        val mavenRepository: MavenRemoteRepository = if (library.isGoogleLib()) {
-            GoogleMaven(apiClient)
+        return if (library.isGoogleLib()) {
+            google.findNewVersionToLibrary(library)
         } else {
-            MavenCentral(apiClient)
+            mavenCentral.findNewVersionToLibrary(library)
+                ?: jcenter.findNewVersionToLibrary(library)
         }
-
-        return mavenRepository.findNewVersionToLibrary(library)
     }
-
 }

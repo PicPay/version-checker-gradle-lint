@@ -1,14 +1,25 @@
 package com.picpay.gradlelint.versioncheck
 
 import com.android.tools.lint.client.api.LintClient
-import com.android.tools.lint.detector.api.*
-import com.picpay.gradlelint.versioncheck.cleaner.removeComments
-import com.picpay.gradlelint.versioncheck.cleaner.tokenize
+import com.android.tools.lint.detector.api.Category
+import com.android.tools.lint.detector.api.Detector
+import com.android.tools.lint.detector.api.GradleContext
+import com.android.tools.lint.detector.api.Implementation
+import com.android.tools.lint.detector.api.Issue
+import com.android.tools.lint.detector.api.Scope
+import com.android.tools.lint.detector.api.Severity
+import com.picpay.gradlelint.versioncheck.extensions.containsVersionNumber
+import com.picpay.gradlelint.versioncheck.extensions.findBuildSrcFromProjectDir
+import com.picpay.gradlelint.versioncheck.extensions.getVarNameInVersionDeclaration
+import com.picpay.gradlelint.versioncheck.extensions.getVarValueFromVersionsFile
+import com.picpay.gradlelint.versioncheck.extensions.removeComments
+import com.picpay.gradlelint.versioncheck.extensions.tokenize
 import com.picpay.gradlelint.versioncheck.library.Library
 import com.picpay.gradlelint.versioncheck.library.toLibrary
+import com.picpay.gradlelint.versioncheck.remote.api.Api
 import com.picpay.gradlelint.versioncheck.remote.repositories.MavenRemoteRepositoryHandler
 import java.io.File
-import java.util.*
+import java.util.Properties
 
 
 @Suppress("UnstableApiUsage")
@@ -51,13 +62,15 @@ class VersionChecker : Detector(), Detector.GradleScanner {
         value: String
     ): Library {
 
-        val buildSrc = findBuildSrc(context.project.dir)
+        val buildSrc = context.project.dir.findBuildSrcFromProjectDir()
 
         checkNotNull(buildSrc) { "buildSrc module not found." }
 
         val properties = readVersionLintProperties(context.project.dir)
         val dependenciesFileName = properties.getProperty(LINT_DEPENDENCIES_PROPERTY)
         val versionsFile = properties.getProperty(LINT_VERSIONS_PROPERTY)
+        val enableCheckForPreReleases = properties.getProperty(LINT_ENABLE_CHECK_PRE_RELEASES)
+            ?.toBoolean() ?: false
 
         if (versionsFile != dependenciesFileName) {
             //TODO: fazer a busca em arquivos diferentes
@@ -70,9 +83,11 @@ class VersionChecker : Detector(), Detector.GradleScanner {
 
         val definition = mutableListOf<String>()
         val dependenciesFileLines = dependenciesFile.readLines()
+
         dependenciesFileLines.forEachIndexed { index, line ->
             val dependencyVarName = value.split(".")[1]
-            if (line.tokenize().contains(dependencyVarName) && line.contains("=")) {
+
+            if (line.tokenize().contains(dependencyVarName) && !line.containsVersionNumber()) {
 
                 val dependency = if (!line.contains("$")) {
                     dependenciesFileLines[index + 1].removeComments()
@@ -84,11 +99,7 @@ class VersionChecker : Detector(), Detector.GradleScanner {
                 definition.add(dependencyCleaned[0].replace("\"", "").trim())
 
                 val versionVarName = dependencyCleaned[1].getVarNameInVersionDeclaration()
-                val versionNumber = if (versionVarName != dependencyVarName) {
-                    getVersionValueFromFile(dependenciesFile, versionVarName)
-                } else {
-                    dependencyCleaned[0].trim()
-                }
+                val versionNumber = dependenciesFile.getVarValueFromVersionsFile(versionVarName)
 
                 definition.add(versionNumber.replace("\"", ""))
                 return@forEachIndexed
@@ -98,11 +109,15 @@ class VersionChecker : Detector(), Detector.GradleScanner {
     }
 
     private fun readVersionLintProperties(projectDir: File): Properties {
-        val versionLintProperties = File(findBuildSrc(projectDir), LINT_PROPERTIES)
+        val versionLintProperties = File(
+            projectDir.findBuildSrcFromProjectDir(),
+            LINT_PROPERTIES
+        )
         return Properties().apply {
             if (!versionLintProperties.exists()) {
                 put(LINT_DEPENDENCIES_PROPERTY, "Dependencies")
                 put(LINT_SUFFIX_PROPERTY, "Libs")
+                put(LINT_ENABLE_CHECK_PRE_RELEASES, "false")
                 store(versionLintProperties.outputStream(), "Gradle Versions Lint")
             }
             load(versionLintProperties.inputStream())
@@ -115,48 +130,9 @@ class VersionChecker : Detector(), Detector.GradleScanner {
         return value.contains("$suffix.")
     }
 
-    private fun findBuildSrc(currentProjectDir: File): File? {
-        var dir: String? = currentProjectDir.parentFile?.absolutePath
-        while (dir != null) {
-            val currentDir = File(dir)
-
-            val containsBuildSrc = currentDir.listFiles()
-                ?.asList()
-                ?.any { it.name == BUILD_SRC_MODULE }
-                ?: false
-
-            if (containsBuildSrc) {
-                return File(currentDir.absolutePath, BUILD_SRC_MODULE)
-            } else {
-                dir = currentDir.parentFile?.absolutePath
-            }
-        }
-        return null
-    }
-
-    private fun String.getVarNameInVersionDeclaration(): String {
-        return replace("{", "")
-            .replace("}", "")
-            .replace("\"", "")
-            .split(".")[1]
-            .trim()
-    }
-
-    private fun getVersionValueFromFile(file: File, versionVar: String): String {
-        file.readLines().forEach { line ->
-            if (line.tokenize().contains(versionVar)) {
-                return line.split("=")[1].trim()
-            }
-        }
-        throw IllegalArgumentException(
-            "Version with name $versionVar not found in file" +
-                    " ${file.absolutePath}."
-        )
-    }
-
     private fun getRepositoryHandler(client: LintClient): MavenRemoteRepositoryHandler {
         return repositoryHandler ?: run {
-            MavenRemoteRepositoryHandler(client).also { handler ->
+            MavenRemoteRepositoryHandler(Api(client)).also { handler ->
                 repositoryHandler = handler
             }
         }
@@ -168,8 +144,8 @@ class VersionChecker : Detector(), Detector.GradleScanner {
         private const val LINT_DEPENDENCIES_PROPERTY = "versionlint.dependencies.file"
         private const val LINT_SUFFIX_PROPERTY = "versionlint.dependencies.suffix"
         private const val LINT_VERSIONS_PROPERTY = "versionlint.versions.file"
+        private const val LINT_ENABLE_CHECK_PRE_RELEASES = "versionlint.prerelease.enable"
 
-        private const val BUILD_SRC_MODULE = "buildSrc"
         private const val DEPENDENCIES = "dependencies"
 
         private val IMPLEMENTATION = Implementation(

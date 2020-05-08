@@ -3,7 +3,9 @@ object Versions {
     const val appCompatVersion = "1.0.0"
     const val retrofitVersion = "2.6.4"
 
-    const val playServicesVersion = "16.0.0"
+    const val playServiceLocation = "16.0.0"
+
+    const val koinCoreVersion = "2.0.1"
 
     // Test Libs
     const val junitTest = "4.12"
@@ -11,11 +13,12 @@ object Versions {
 
 object Libs {
 
+    val koinCore = "org.koin:koin-core:${Versions.koinCoreVersion}"
     val appCompat = "androidx.appcompat:appcompat:${Versions.appCompatVersion}" // AppCompat
     val retrofit =
         "com.squareup.retrofit2:retrofit:${Versions.retrofitVersion}"
     val playServiceLocation =
-        "com.google.android.gms:play-services-location:${Versions.playServicesVersion}"
+        "com.google.android.gms:play-services-location:${Versions.playServiceLocation}"
 }
 
 object TestLibs {
