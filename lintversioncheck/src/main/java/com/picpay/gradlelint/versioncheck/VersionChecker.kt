@@ -105,6 +105,7 @@ class VersionChecker : Detector(), Detector.GradleScanner {
                 return@forEachIndexed
             }
         }
+        check(definition.size == 2)
         return (definition[0] + definition[1]).toLibrary()
     }
 

@@ -15,6 +15,10 @@ internal fun Library.isGoogleLib(): Boolean {
             groupId.startsWith("com.google")
 }
 
+internal fun Library.isJitpackLib(): Boolean {
+    return groupId.startsWith("com.github")
+}
+
 internal fun String.toLibrary(): Library {
     val definition = this.split(":")
     return Library(
