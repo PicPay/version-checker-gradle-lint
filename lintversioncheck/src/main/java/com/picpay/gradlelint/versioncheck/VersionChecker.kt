@@ -1,6 +1,5 @@
 package com.picpay.gradlelint.versioncheck
 
-import com.android.tools.lint.client.api.LintClient
 import com.android.tools.lint.detector.api.Category
 import com.android.tools.lint.detector.api.Detector
 import com.android.tools.lint.detector.api.GradleContext
@@ -16,8 +15,9 @@ import com.picpay.gradlelint.versioncheck.extensions.removeComments
 import com.picpay.gradlelint.versioncheck.extensions.tokenize
 import com.picpay.gradlelint.versioncheck.library.Library
 import com.picpay.gradlelint.versioncheck.library.toLibrary
-import com.picpay.gradlelint.versioncheck.remote.api.Api
-import com.picpay.gradlelint.versioncheck.remote.repositories.MavenRemoteRepositoryHandler
+import com.picpay.gradlelint.versioncheck.repositories.RepositoryResult
+import com.picpay.gradlelint.versioncheck.api.Api
+import com.picpay.gradlelint.versioncheck.repositories.MavenRemoteRepositoryHandler
 import java.io.File
 import java.util.Properties
 
@@ -26,6 +26,9 @@ import java.util.Properties
 class VersionChecker : Detector(), Detector.GradleScanner {
 
     private var repositoryHandler: MavenRemoteRepositoryHandler? = null
+    private var buildSrcDir: File? = null
+    private var versionsProperties: Properties? = null
+    private var dependenciesFileLines = emptyList<String>()
 
     override fun checkDslPropertyAssignment(
         context: GradleContext,
@@ -37,22 +40,21 @@ class VersionChecker : Detector(), Detector.GradleScanner {
         statementCookie: Any
     ) {
         if (parent == DEPENDENCIES && isCustomDependencyDeclaration(context, value)) {
+
             try {
-                val library = getLibraryFromDependency(context, value)
-                getRepositoryHandler(context.client).getNewVersionAvailable(library)
-                    ?.let { newLibrary ->
-                        context.report(
-                            REMOTE_VERSION,
-                            context.getLocation(valueCookie),
-                            "New version available: $newLibrary\nActual: $library"
-                        )
-                    }
+                val library: Library = getLibraryFromDependency(context, value)
+                val result = getRepositoryHandler(context).getNewVersionAvailable(library)
+
+                if (result is RepositoryResult.NewVersionAvailable) {
+                    context.report(
+                        REMOTE_VERSION,
+                        context.getLocation(valueCookie),
+                        "New version available: ${result.version}\nActual: $library"
+                    )
+                }
+
             } catch (e: Throwable) {
-                context.report(
-                    REMOTE_VERSION,
-                    context.getLocation(valueCookie),
-                    e.toString()
-                )
+                context.log(e, "VersionChecker - Error")
             }
         }
     }
@@ -62,9 +64,7 @@ class VersionChecker : Detector(), Detector.GradleScanner {
         value: String
     ): Library {
 
-        val buildSrc = context.project.dir.findBuildSrcFromProjectDir()
-
-        checkNotNull(buildSrc) { "buildSrc module not found." }
+        val buildSrc = getBuildSrcDir(context.project.dir)
 
         val properties = readVersionLintProperties(context.project.dir)
         val dependenciesFileName = properties.getProperty(LINT_DEPENDENCIES_PROPERTY)
@@ -82,9 +82,10 @@ class VersionChecker : Detector(), Detector.GradleScanner {
         )
 
         val definition = mutableListOf<String>()
-        val dependenciesFileLines = dependenciesFile.readLines()
 
-        dependenciesFileLines.forEachIndexed { index, line ->
+        val fileLines = getDependenciesFileLines(dependenciesFile)
+
+        fileLines.forEachIndexed { index, line ->
             val dependencyVarName = value.split(".")[1]
 
             if (line.tokenize().contains(dependencyVarName) && !line.containsVersionNumber()) {
@@ -99,7 +100,7 @@ class VersionChecker : Detector(), Detector.GradleScanner {
                 definition.add(dependencyCleaned[0].replace("\"", "").trim())
 
                 val versionVarName = dependencyCleaned[1].getVarNameInVersionDeclaration()
-                val versionNumber = dependenciesFile.getVarValueFromVersionsFile(versionVarName)
+                val versionNumber = fileLines.getVarValueFromVersionsFile(versionVarName)
 
                 definition.add(versionNumber.replace("\"", ""))
                 return@forEachIndexed
@@ -109,19 +110,32 @@ class VersionChecker : Detector(), Detector.GradleScanner {
         return (definition[0] + definition[1]).toLibrary()
     }
 
+    private fun getDependenciesFileLines(dependenciesFile: File): List<String> {
+        if (dependenciesFileLines.isEmpty()) {
+            dependenciesFileLines = dependenciesFile.readLines()
+        }
+        return dependenciesFileLines
+    }
+
     private fun readVersionLintProperties(projectDir: File): Properties {
-        val versionLintProperties = File(
-            projectDir.findBuildSrcFromProjectDir(),
-            LINT_PROPERTIES
-        )
-        return Properties().apply {
-            if (!versionLintProperties.exists()) {
-                put(LINT_DEPENDENCIES_PROPERTY, "Dependencies")
-                put(LINT_SUFFIX_PROPERTY, "Libs")
-                put(LINT_ENABLE_CHECK_PRE_RELEASES, "false")
-                store(versionLintProperties.outputStream(), "Gradle Versions Lint")
+        return versionsProperties ?: run {
+            val versionLintPropertiesFile = File(
+                projectDir.findBuildSrcFromProjectDir(),
+                LINT_PROPERTIES
+            )
+            Properties().apply {
+                if (!versionLintPropertiesFile.exists()) {
+                    put(LINT_DEPENDENCIES_PROPERTY, "Dependencies")
+                    put(LINT_SUFFIX_PROPERTY, "Libs")
+                    put(LINT_ENABLE_CHECK_PRE_RELEASES, "false")
+                    store(
+                        versionLintPropertiesFile.outputStream(),
+                        "Gradle Versions Lint"
+                    )
+                }
+                load(versionLintPropertiesFile.inputStream())
+                versionsProperties = this
             }
-            load(versionLintProperties.inputStream())
         }
     }
 
@@ -131,11 +145,21 @@ class VersionChecker : Detector(), Detector.GradleScanner {
         return value.contains("$suffix.")
     }
 
-    private fun getRepositoryHandler(client: LintClient): MavenRemoteRepositoryHandler {
+    private fun getRepositoryHandler(context: GradleContext): MavenRemoteRepositoryHandler {
         return repositoryHandler ?: run {
-            MavenRemoteRepositoryHandler(Api(client)).also { handler ->
-                repositoryHandler = handler
-            }
+            MavenRemoteRepositoryHandler(
+                Api(context.client),
+                File("${getBuildSrcDir(context.project.dir)}/build/tmp")
+            ).also { handler -> repositoryHandler = handler }
+        }
+    }
+
+    private fun getBuildSrcDir(parentDir: File): File {
+        return buildSrcDir ?: run {
+            val buildSrc = parentDir.findBuildSrcFromProjectDir()
+            checkNotNull(buildSrc) { "buildSrc module not found." }
+            buildSrcDir = buildSrc
+            return buildSrc
         }
     }
 
@@ -161,8 +185,8 @@ class VersionChecker : Detector(), Detector.GradleScanner {
             "This detector checks with a central repository to see if there are newer versions " +
                     "available for the dependencies used by this project. " +
                     "This is similar to the `GradleDependency` check, which checks for newer versions " +
-                    "available in the Android SDK tools and libraries, but this works with any " +
-                    "MavenCentral dependency, and connects to the library every time, which makes " +
+                    "available. This works with any Google, MavenCentral, JCenter or Jitpack " +
+                    "dependency, and connects to the library every time, which makes " +
                     "it more flexible but also *much* slower.",
             Category.MESSAGES,
             7,

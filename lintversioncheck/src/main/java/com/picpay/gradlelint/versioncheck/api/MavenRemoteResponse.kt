@@ -1,3 +1,3 @@
-package com.picpay.gradlelint.versioncheck.remote.api
+package com.picpay.gradlelint.versioncheck.api
 
 internal data class MavenRemoteResponse(val body: String)

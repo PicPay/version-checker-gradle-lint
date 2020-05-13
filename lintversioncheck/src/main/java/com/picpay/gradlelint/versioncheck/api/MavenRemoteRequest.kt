@@ -1,4 +1,4 @@
-package com.picpay.gradlelint.versioncheck.remote.api
+package com.picpay.gradlelint.versioncheck.api
 
 import java.net.URL
 

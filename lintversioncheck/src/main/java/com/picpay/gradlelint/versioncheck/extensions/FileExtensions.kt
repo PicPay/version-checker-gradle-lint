@@ -23,16 +23,13 @@ internal fun File.findBuildSrcFromProjectDir(): File? {
     return null
 }
 
-internal fun File.getVarValueFromVersionsFile(versionVar: String): String {
-    readLines().forEach { line ->
+internal fun List<String>.getVarValueFromVersionsFile(versionVar: String): String {
+    forEach { line ->
         if (line.contains(versionVar) && line.containsVersionNumber()) {
             return line.tokenize("=")
                 .map { it.removeComments() }
                 .last()
         }
     }
-    throw IllegalArgumentException(
-        "Version with name $versionVar not found in file" +
-                " ${absolutePath}."
-    )
+    throw IllegalArgumentException("Version with name $versionVar not found in file")
 }

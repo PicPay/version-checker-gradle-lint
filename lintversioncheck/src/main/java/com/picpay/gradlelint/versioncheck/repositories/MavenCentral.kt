@@ -1,11 +1,10 @@
-package com.picpay.gradlelint.versioncheck.remote.repositories
+package com.picpay.gradlelint.versioncheck.repositories
 
 import com.google.gson.Gson
 import com.picpay.gradlelint.versioncheck.extensions.firstReleaseVersion
 import com.picpay.gradlelint.versioncheck.library.Library
-import com.picpay.gradlelint.versioncheck.library.mapToNewVersionFromLibraryOrNull
-import com.picpay.gradlelint.versioncheck.remote.api.ApiClient
-import com.picpay.gradlelint.versioncheck.remote.api.MavenRemoteRequest
+import com.picpay.gradlelint.versioncheck.api.ApiClient
+import com.picpay.gradlelint.versioncheck.api.MavenRemoteRequest
 import java.net.URL
 
 internal class MavenCentral(client: ApiClient) : MavenRemoteRepository(client) {
@@ -19,19 +18,27 @@ internal class MavenCentral(client: ApiClient) : MavenRemoteRepository(client) {
     override fun getNewVersionOrNull(
         actualLibrary: Library,
         responseBody: String
-    ): Library? = try {
+    ): RepositoryResult = try {
 
         val mavenCentralResponse = Gson().fromJson(responseBody, MavenCentralResponse::class.java)
-        val versions = mavenCentralResponse.response.docs
+        val responseVersions = mavenCentralResponse.response.docs
 
-        if (versions.isEmpty()) null
-        else {
-            versions.map { version -> version.v }
-                .firstReleaseVersion()
-                ?.mapToNewVersionFromLibraryOrNull(actualLibrary)
+        if (responseVersions.isEmpty() || responseVersions.none { it.v == actualLibrary.version }) {
+            RepositoryResult.ArtifactNotFound
+        } else {
+            val releaseVersion = responseVersions.map { version -> version.v }.firstReleaseVersion()
+            when {
+                releaseVersion == actualLibrary.version -> RepositoryResult.NoUpdateFound
+                releaseVersion != null -> {
+                    RepositoryResult.NewVersionAvailable(
+                        actualLibrary.copy(version = releaseVersion)
+                    )
+                }
+                else -> RepositoryResult.ArtifactNotFound
+            }
         }
     } catch (e: Throwable) {
-        null
+        RepositoryResult.ArtifactNotFound
     }
 
     override fun createQueryFromLibrary(library: Library): MavenRemoteRequest {
@@ -41,7 +48,6 @@ internal class MavenCentral(client: ApiClient) : MavenRemoteRepository(client) {
             .append("%22+AND+a:%22")
             .append(library.artifactId)
             .append("%22&core=gav")
-            .append("&rows=1")
             .append("&wt=json")
             .toString()
         return MavenRemoteRequest(query = URL(query))

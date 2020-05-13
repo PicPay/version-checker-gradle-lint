@@ -1,4 +1,4 @@
-package com.picpay.gradlelint.versioncheck.remote.api
+package com.picpay.gradlelint.versioncheck.api
 
 import com.android.tools.lint.client.api.LintClient
 import java.io.BufferedReader

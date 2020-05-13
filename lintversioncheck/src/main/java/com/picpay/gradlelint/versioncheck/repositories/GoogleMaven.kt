@@ -1,11 +1,10 @@
-package com.picpay.gradlelint.versioncheck.remote.repositories
+package com.picpay.gradlelint.versioncheck.repositories
 
 import com.android.utils.XmlUtils
-import com.picpay.gradlelint.versioncheck.library.Library
-import com.picpay.gradlelint.versioncheck.remote.api.MavenRemoteRequest
 import com.picpay.gradlelint.versioncheck.extensions.firstReleaseVersion
-import com.picpay.gradlelint.versioncheck.library.mapToNewVersionFromLibraryOrNull
-import com.picpay.gradlelint.versioncheck.remote.api.ApiClient
+import com.picpay.gradlelint.versioncheck.library.Library
+import com.picpay.gradlelint.versioncheck.api.ApiClient
+import com.picpay.gradlelint.versioncheck.api.MavenRemoteRequest
 import java.net.URL
 
 internal class GoogleMaven(client: ApiClient) : MavenRemoteRepository(client) {
@@ -13,10 +12,19 @@ internal class GoogleMaven(client: ApiClient) : MavenRemoteRepository(client) {
     override fun getNewVersionOrNull(
         actualLibrary: Library,
         responseBody: String
-    ): Library? {
-        return responseBody
+    ): RepositoryResult = try {
+        val latestVersion = responseBody
             .getLibraryVersionFromGoogleMaven(actualLibrary.artifactId)
-            ?.mapToNewVersionFromLibraryOrNull(actualLibrary)
+
+        when {
+            latestVersion == actualLibrary.version -> RepositoryResult.NoUpdateFound
+            latestVersion != null -> {
+                RepositoryResult.NewVersionAvailable(actualLibrary.copy(version = latestVersion))
+            }
+            else -> RepositoryResult.ArtifactNotFound
+        }
+    } catch (e: Throwable) {
+        RepositoryResult.ArtifactNotFound
     }
 
     override fun createQueryFromLibrary(library: Library): MavenRemoteRequest {
