@@ -7,17 +7,19 @@ import com.android.tools.lint.detector.api.Implementation
 import com.android.tools.lint.detector.api.Issue
 import com.android.tools.lint.detector.api.Scope
 import com.android.tools.lint.detector.api.Severity
+import com.picpay.gradlelint.versioncheck.api.Api
+import com.picpay.gradlelint.versioncheck.cache.RepositoryCache
 import com.picpay.gradlelint.versioncheck.extensions.containsVersionNumber
 import com.picpay.gradlelint.versioncheck.extensions.findBuildSrcFromProjectDir
 import com.picpay.gradlelint.versioncheck.extensions.getVarNameInVersionDeclaration
 import com.picpay.gradlelint.versioncheck.extensions.getVarValueFromVersionsFile
+import com.picpay.gradlelint.versioncheck.extensions.isVersionNumber
 import com.picpay.gradlelint.versioncheck.extensions.removeComments
 import com.picpay.gradlelint.versioncheck.extensions.tokenize
 import com.picpay.gradlelint.versioncheck.library.Library
 import com.picpay.gradlelint.versioncheck.library.toLibrary
-import com.picpay.gradlelint.versioncheck.repositories.RepositoryResult
-import com.picpay.gradlelint.versioncheck.api.Api
 import com.picpay.gradlelint.versioncheck.repositories.MavenRemoteRepositoryHandler
+import com.picpay.gradlelint.versioncheck.repositories.RepositoryResult
 import java.io.File
 import java.util.Properties
 
@@ -42,8 +44,13 @@ class VersionChecker : Detector(), Detector.GradleScanner {
         if (parent == DEPENDENCIES && isCustomDependencyDeclaration(context, value)) {
 
             try {
-                val library: Library = getLibraryFromDependency(context, value)
-                val result = getRepositoryHandler(context).getNewVersionAvailable(library)
+                val library: Library = getLibraryFromDependency(context, value) ?: return
+
+                val cacheLifetime = readVersionCheckerProperties(context.project.dir)
+                    .getProperty(LINT_CACHE_LIFETIME).toLong()
+
+                val result = getRepositoryHandler(context, cacheLifetime)
+                    .getNewVersionAvailable(library)
 
                 if (result is RepositoryResult.NewVersionAvailable) {
                     context.report(
@@ -62,14 +69,16 @@ class VersionChecker : Detector(), Detector.GradleScanner {
     private fun getLibraryFromDependency(
         context: GradleContext,
         value: String
-    ): Library {
+    ): Library? {
 
         val buildSrc = getBuildSrcDir(context.project.dir)
 
-        val properties = readVersionLintProperties(context.project.dir)
+        val properties = readVersionCheckerProperties(context.project.dir)
         val dependenciesFileName = properties.getProperty(LINT_DEPENDENCIES_PROPERTY)
         val versionsFile = properties.getProperty(LINT_VERSIONS_PROPERTY)
-        val enableCheckForPreReleases = properties.getProperty(LINT_ENABLE_CHECK_PRE_RELEASES)
+
+        val enableCheckForPreReleases: Boolean = properties
+            .getProperty(LINT_ENABLE_CHECK_PRE_RELEASES)
             ?.toBoolean() ?: false
 
         if (versionsFile != dependenciesFileName) {
@@ -81,11 +90,11 @@ class VersionChecker : Detector(), Detector.GradleScanner {
             "src/main/java/$dependenciesFileName.kt"
         )
 
-        val definition = mutableListOf<String>()
-
+        var actualLibrary: Library? = null
         val fileLines = getDependenciesFileLines(dependenciesFile)
 
         fileLines.forEachIndexed { index, line ->
+
             val dependencyVarName = value.split(".")[1]
 
             if (line.tokenize().contains(dependencyVarName) && !line.containsVersionNumber()) {
@@ -95,19 +104,23 @@ class VersionChecker : Detector(), Detector.GradleScanner {
                 } else {
                     line.split("=")[1].removeComments()
                 }
-                val dependencyCleaned = dependency.split("$")
 
-                definition.add(dependencyCleaned[0].replace("\"", "").trim())
+                val dependencyCleaned = dependency.split("$")
+                val groupAndArtifactId = dependencyCleaned[0]
+                    .replace("\"", "")
+                    .trim()
 
                 val versionVarName = dependencyCleaned[1].getVarNameInVersionDeclaration()
                 val versionNumber = fileLines.getVarValueFromVersionsFile(versionVarName)
+                val version = versionNumber.replace("\"", "")
 
-                definition.add(versionNumber.replace("\"", ""))
+                if (version.isVersionNumber(enableCheckForPreReleases)) {
+                    actualLibrary = (groupAndArtifactId + version).toLibrary()
+                }
                 return@forEachIndexed
             }
         }
-        check(definition.size == 2)
-        return (definition[0] + definition[1]).toLibrary()
+        return actualLibrary
     }
 
     private fun getDependenciesFileLines(dependenciesFile: File): List<String> {
@@ -117,7 +130,7 @@ class VersionChecker : Detector(), Detector.GradleScanner {
         return dependenciesFileLines
     }
 
-    private fun readVersionLintProperties(projectDir: File): Properties {
+    private fun readVersionCheckerProperties(projectDir: File): Properties {
         return versionsProperties ?: run {
             val versionLintPropertiesFile = File(
                 projectDir.findBuildSrcFromProjectDir(),
@@ -128,6 +141,7 @@ class VersionChecker : Detector(), Detector.GradleScanner {
                     put(LINT_DEPENDENCIES_PROPERTY, "Dependencies")
                     put(LINT_SUFFIX_PROPERTY, "Libs")
                     put(LINT_ENABLE_CHECK_PRE_RELEASES, "false")
+                    put(LINT_CACHE_LIFETIME, "60")
                     store(
                         versionLintPropertiesFile.outputStream(),
                         "Gradle Versions Lint"
@@ -140,16 +154,19 @@ class VersionChecker : Detector(), Detector.GradleScanner {
     }
 
     private fun isCustomDependencyDeclaration(context: GradleContext, value: String): Boolean {
-        val suffix = readVersionLintProperties(context.project.dir)
+        val suffix = readVersionCheckerProperties(context.project.dir)
             .getProperty(LINT_SUFFIX_PROPERTY)
         return value.contains("$suffix.")
     }
 
-    private fun getRepositoryHandler(context: GradleContext): MavenRemoteRepositoryHandler {
+    private fun getRepositoryHandler(
+        context: GradleContext,
+        cacheLifetime: Long
+    ): MavenRemoteRepositoryHandler {
         return repositoryHandler ?: run {
             MavenRemoteRepositoryHandler(
                 Api(context.client),
-                File("${getBuildSrcDir(context.project.dir)}/build/tmp")
+                RepositoryCache(lifetime = cacheLifetime)
             ).also { handler -> repositoryHandler = handler }
         }
     }
@@ -170,6 +187,7 @@ class VersionChecker : Detector(), Detector.GradleScanner {
         private const val LINT_SUFFIX_PROPERTY = "versionlint.dependencies.suffix"
         private const val LINT_VERSIONS_PROPERTY = "versionlint.versions.file"
         private const val LINT_ENABLE_CHECK_PRE_RELEASES = "versionlint.prerelease.enable"
+        private const val LINT_CACHE_LIFETIME = "versionlint.cache.time.minutes"
 
         private const val DEPENDENCIES = "dependencies"
 

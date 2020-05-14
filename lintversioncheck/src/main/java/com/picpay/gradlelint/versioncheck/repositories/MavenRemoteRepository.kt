@@ -6,7 +6,7 @@ import com.picpay.gradlelint.versioncheck.api.MavenRemoteRequest
 
 internal abstract class MavenRemoteRepository(private val client: ApiClient) {
 
-    fun findNewVersionToLibrary(library: Library): RepositoryResult {
+    fun findNewVersionFromLibrary(library: Library): RepositoryResult {
         val request = createQueryFromLibrary(library)
         val response = client.executeRequest(request)
         return if (response != null) {

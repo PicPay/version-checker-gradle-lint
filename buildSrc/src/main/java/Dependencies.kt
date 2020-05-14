@@ -7,7 +7,7 @@ object Versions {
 
     const val koinCoreVersion = "2.0.1"
 
-    const val mpchart = "v3.1.0"
+    const val mpchart = "v3.1.0-alpha"
 
     // Test Libs
     const val junitTest = "4.12"
