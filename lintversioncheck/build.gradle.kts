@@ -1,6 +1,7 @@
 plugins {
     id("java-library")
     id("kotlin")
+    id("jacoco")
 }
 
 repositories {
@@ -11,6 +12,7 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.3.72")
     implementation("com.android.tools.lint:lint-api:26.6.3")
     implementation("com.android.tools.lint:lint-checks:26.6.3")
+    testImplementation("junit:junit:4.13")
 }
 
 val jar by tasks.getting(Jar::class) {
@@ -36,6 +38,14 @@ tasks {
             include("*.jar")
         }
         into(System.getProperty("user.home") + "/.android/lint")
+    }
+}
+
+tasks.test {
+    finalizedBy("jacocoTestReport")
+    doLast {
+        println("View code coverage at:")
+        println("file://$buildDir/reports/jacoco/test/html/index.html")
     }
 }
 

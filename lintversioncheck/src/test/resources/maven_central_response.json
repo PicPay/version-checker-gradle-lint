@@ -1,0 +1,253 @@
+{
+  "responseHeader": {
+    "status": 0,
+    "QTime": 0,
+    "params": {
+      "q": "g:\"com.squareup.retrofit2\" AND a:\"retrofit\"",
+      "core": "gav",
+      "indent": "off",
+      "fl": "id,g,a,v,p,ec,timestamp,tags",
+      "start": "",
+      "sort": "score desc,timestamp desc,g asc,a asc,v desc",
+      "rows": "",
+      "wt": "json",
+      "version": "2.2"
+    }
+  },
+  "response": {
+    "numFound": 20,
+    "start": 0,
+    "docs": [
+      {
+        "id": "com.squareup.retrofit2:retrofit:2.8.1",
+        "g": "com.squareup.retrofit2",
+        "a": "retrofit",
+        "v": "2.8.1",
+        "p": "jar",
+        "timestamp": 1585158234000,
+        "ec": [
+          "-javadoc.jar",
+          "-sources.jar",
+          ".jar",
+          ".pom"
+        ],
+        "tags": [
+          "safe",
+          "client",
+          "android",
+          "http",
+          "java",
+          "square",
+          "type"
+        ]
+      },
+      {
+        "id": "com.squareup.retrofit2:retrofit:2.8.0",
+        "g": "com.squareup.retrofit2",
+        "a": "retrofit",
+        "v": "2.8.0",
+        "p": "jar",
+        "timestamp": 1584982040000,
+        "ec": [
+          "-javadoc.jar",
+          "-sources.jar",
+          ".jar",
+          ".pom"
+        ],
+        "tags": [
+          "safe",
+          "client",
+          "android",
+          "http",
+          "java",
+          "square",
+          "type"
+        ]
+      },
+      {
+        "id": "com.squareup.retrofit2:retrofit:2.7.2",
+        "g": "com.squareup.retrofit2",
+        "a": "retrofit",
+        "v": "2.7.2",
+        "p": "jar",
+        "timestamp": 1582604834000,
+        "ec": [
+          "-javadoc.jar",
+          "-sources.jar",
+          ".jar",
+          ".pom"
+        ],
+        "tags": [
+          "safe",
+          "client",
+          "android",
+          "http",
+          "java",
+          "square",
+          "type"
+        ]
+      },
+      {
+        "id": "com.squareup.retrofit2:retrofit:2.7.1",
+        "g": "com.squareup.retrofit2",
+        "a": "retrofit",
+        "v": "2.7.1",
+        "p": "jar",
+        "timestamp": 1578001215000,
+        "ec": [
+          "-javadoc.jar",
+          "-sources.jar",
+          ".jar",
+          ".pom"
+        ],
+        "tags": [
+          "safe",
+          "client",
+          "android",
+          "http",
+          "java",
+          "square",
+          "type"
+        ]
+      },
+      {
+        "id": "com.squareup.retrofit2:retrofit:2.6.4",
+        "g": "com.squareup.retrofit2",
+        "a": "retrofit",
+        "v": "2.6.4",
+        "p": "jar",
+        "timestamp": 1578001009000,
+        "ec": [
+          "-sources.jar",
+          "-javadoc.jar",
+          ".jar",
+          ".pom"
+        ],
+        "tags": [
+          "safe",
+          "client",
+          "android",
+          "http",
+          "java",
+          "square",
+          "type"
+        ]
+      },
+      {
+        "id": "com.squareup.retrofit2:retrofit:2.7.0",
+        "g": "com.squareup.retrofit2",
+        "a": "retrofit",
+        "v": "2.7.0",
+        "p": "jar",
+        "timestamp": 1575914236000,
+        "ec": [
+          "-javadoc.jar",
+          "-sources.jar",
+          ".jar",
+          ".pom"
+        ],
+        "tags": [
+          "safe",
+          "client",
+          "android",
+          "http",
+          "java",
+          "square",
+          "type"
+        ]
+      },
+      {
+        "id": "com.squareup.retrofit2:retrofit:2.6.3",
+        "g": "com.squareup.retrofit2",
+        "a": "retrofit",
+        "v": "2.6.3",
+        "p": "jar",
+        "timestamp": 1575912759000,
+        "ec": [
+          "-javadoc.jar",
+          "-sources.jar",
+          ".jar",
+          ".pom"
+        ],
+        "tags": [
+          "safe",
+          "client",
+          "android",
+          "http",
+          "java",
+          "square",
+          "type"
+        ]
+      },
+      {
+        "id": "com.squareup.retrofit2:retrofit:2.6.2",
+        "g": "com.squareup.retrofit2",
+        "a": "retrofit",
+        "v": "2.6.2",
+        "p": "jar",
+        "timestamp": 1569284810000,
+        "ec": [
+          "-javadoc.jar",
+          "-sources.jar",
+          ".jar",
+          ".pom"
+        ],
+        "tags": [
+          "safe",
+          "client",
+          "android",
+          "http",
+          "java",
+          "square",
+          "type"
+        ]
+      },
+      {
+        "id": "com.squareup.retrofit2:retrofit:2.6.1",
+        "g": "com.squareup.retrofit2",
+        "a": "retrofit",
+        "v": "2.6.1",
+        "p": "jar",
+        "timestamp": 1564574512000,
+        "ec": [
+          "-javadoc.jar",
+          "-sources.jar",
+          ".jar",
+          ".pom"
+        ],
+        "tags": [
+          "safe",
+          "client",
+          "android",
+          "http",
+          "java",
+          "square",
+          "type"
+        ]
+      },
+      {
+        "id": "com.squareup.retrofit2:retrofit:2.6.0",
+        "g": "com.squareup.retrofit2",
+        "a": "retrofit",
+        "v": "2.6.0",
+        "p": "jar",
+        "timestamp": 1559758383000,
+        "ec": [
+          "-javadoc.jar",
+          "-sources.jar",
+          ".jar",
+          ".pom"
+        ],
+        "tags": [
+          "safe",
+          "client",
+          "android",
+          "http",
+          "java",
+          "square",
+          "type"
+        ]
+      }
+    ]
+  }
+}
