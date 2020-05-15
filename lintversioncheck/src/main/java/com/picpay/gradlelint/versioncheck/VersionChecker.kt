@@ -200,12 +200,13 @@ class VersionChecker : Detector(), Detector.GradleScanner {
         val REMOTE_VERSION = Issue.create(
             "PicPayVersionChecker",
             "Newer Library Versions Available",
-            "This detector checks with a central repository to see if there are newer versions " +
-                    "available for the dependencies used by this project. " +
-                    "This is similar to the `GradleDependency` check, which checks for newer versions " +
-                    "available. This works with any Google, MavenCentral, JCenter or Jitpack " +
-                    "dependency, and connects to the library every time, which makes " +
-                    "it more flexible but also *much* slower.",
+            "This detector checks with a central repository to see if there are newer" +
+                    " versions available for the dependencies used by this project. " +
+                    "This is similar to the `GradleDependency` check, which checks for newer" +
+                    " versions available. This works with any Google, MavenCentral, JCenter or" +
+                    " Jitpack dependency, and connects to the remote library if the reference not" +
+                    " exists in local cache. The cache lifetime default is 60 minutes, but can " +
+                    "be modified in `versionlint.properties` into `buildSrc` module.",
             Category.MESSAGES,
             7,
             Severity.WARNING,
