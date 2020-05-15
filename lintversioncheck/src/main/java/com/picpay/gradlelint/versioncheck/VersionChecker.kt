@@ -12,7 +12,7 @@ import com.picpay.gradlelint.versioncheck.cache.RepositoryCache
 import com.picpay.gradlelint.versioncheck.extensions.containsVersionNumber
 import com.picpay.gradlelint.versioncheck.extensions.findBuildSrcFromProjectDir
 import com.picpay.gradlelint.versioncheck.extensions.getVarNameInVersionDeclaration
-import com.picpay.gradlelint.versioncheck.extensions.getVarValueFromVersionsFile
+import com.picpay.gradlelint.versioncheck.extensions.getVarValueFromVersionsFileLines
 import com.picpay.gradlelint.versioncheck.extensions.isVersionNumber
 import com.picpay.gradlelint.versioncheck.extensions.removeComments
 import com.picpay.gradlelint.versioncheck.extensions.tokenize
@@ -44,12 +44,13 @@ class VersionChecker : Detector(), Detector.GradleScanner {
         if (parent == DEPENDENCIES && isCustomDependencyDeclaration(context, value)) {
 
             try {
-                val library: Library = getLibraryFromDependency(context, value) ?: return
+                val library: Library = getLibraryFromDependencyFile(context, value) ?: return
 
-                val cacheLifetime = readVersionCheckerProperties(context.project.dir)
-                    .getProperty(LINT_CACHE_LIFETIME).toLong()
+                val cacheLifetime: Long = readVersionCheckerProperties(context.project.dir)
+                    .getProperty(LINT_CACHE_LIFETIME)
+                    .toLong()
 
-                val result = getRepositoryHandler(context, cacheLifetime)
+                val result: RepositoryResult = getRepositoryHandler(context, cacheLifetime)
                     .getNewVersionAvailable(library)
 
                 if (result is RepositoryResult.NewVersionAvailable) {
@@ -66,12 +67,10 @@ class VersionChecker : Detector(), Detector.GradleScanner {
         }
     }
 
-    private fun getLibraryFromDependency(
+    private fun getLibraryFromDependencyFile(
         context: GradleContext,
         value: String
     ): Library? {
-
-        val buildSrc = getBuildSrcDir(context.project.dir)
 
         val properties = readVersionCheckerProperties(context.project.dir)
         val dependenciesFileName = properties.getProperty(LINT_DEPENDENCIES_PROPERTY)
@@ -85,18 +84,31 @@ class VersionChecker : Detector(), Detector.GradleScanner {
             //TODO: fazer a busca em arquivos diferentes
         }
 
-        val dependenciesFile = File(
-            buildSrc.absolutePath,
-            "src/main/java/$dependenciesFileName.kt"
+        val linesFromDependencyFile = getDependenciesFileLines(
+            dependenciesFile = File(
+                getBuildSrcDir(context.project.dir).absolutePath,
+                "src/main/java/$dependenciesFileName.kt"
+            )
         )
 
-        var actualLibrary: Library? = null
-        val fileLines = getDependenciesFileLines(dependenciesFile)
+        return extractLibraryFromFileLines(
+            valueInGradle = value,
+            fileLines = linesFromDependencyFile,
+            enableCheckForPreReleases = enableCheckForPreReleases
+        )
+    }
+
+    private fun extractLibraryFromFileLines(
+        valueInGradle: String,
+        fileLines: List<String>,
+        enableCheckForPreReleases: Boolean
+    ): Library? {
+
+        var extractedLibrary: Library? = null
 
         fileLines.forEachIndexed { index, line ->
 
-            val dependencyVarName = value.split(".")[1]
-
+            val dependencyVarName = valueInGradle.split(".")[1]
             if (line.tokenize().contains(dependencyVarName) && !line.containsVersionNumber()) {
 
                 val dependency = if (!line.contains("$")) {
@@ -106,21 +118,21 @@ class VersionChecker : Detector(), Detector.GradleScanner {
                 }
 
                 val dependencyCleaned = dependency.split("$")
-                val groupAndArtifactId = dependencyCleaned[0]
+                val groupAndArtifactId = dependencyCleaned.first()
                     .replace("\"", "")
                     .trim()
 
                 val versionVarName = dependencyCleaned[1].getVarNameInVersionDeclaration()
-                val versionNumber = fileLines.getVarValueFromVersionsFile(versionVarName)
+                val versionNumber = fileLines.getVarValueFromVersionsFileLines(versionVarName)
                 val version = versionNumber.replace("\"", "")
 
                 if (version.isVersionNumber(enableCheckForPreReleases)) {
-                    actualLibrary = (groupAndArtifactId + version).toLibrary()
+                    extractedLibrary = (groupAndArtifactId + version).toLibrary()
                 }
                 return@forEachIndexed
             }
         }
-        return actualLibrary
+        return extractedLibrary
     }
 
     private fun getDependenciesFileLines(dependenciesFile: File): List<String> {

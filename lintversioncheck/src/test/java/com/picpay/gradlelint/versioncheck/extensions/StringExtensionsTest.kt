@@ -37,4 +37,21 @@ internal class StringExtensionsTest {
 
         assertTrue(source.containsVersionNumber())
     }
+
+    @Test
+    fun `getVarValueFromVersionsFileLines Should return value of variable with version`() {
+        val lines = listOf(
+            "const val libraryVersion1 = \"1.1.1\" // any comment here",
+            "const val libraryVersion2 = \"2.2.2\" // any comment here",
+            "const val libraryVersion3 = \"3.3.3\" // any comment here",
+            "const val libraryVersion4 = \"4.4.4\" // any comment here",
+            "const val libraryVersion5 = \"5.5.5\" // any comment here"
+        )
+
+        val expected = "\"3.3.3\""
+
+        val extracted = lines.getVarValueFromVersionsFileLines("libraryVersion3")
+
+        assertEquals(expected, extracted)
+    }
 }

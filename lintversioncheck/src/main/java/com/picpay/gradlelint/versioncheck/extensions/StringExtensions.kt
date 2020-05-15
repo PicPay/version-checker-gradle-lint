@@ -24,3 +24,13 @@ internal fun String.containsVersionNumber(): Boolean {
     }
 }
 
+internal fun List<String>.getVarValueFromVersionsFileLines(versionVar: String): String {
+    forEach { line ->
+        if (line.contains(versionVar) && line.removeComments().containsVersionNumber()) {
+            return line.tokenize("=")
+                .map { it.removeComments() }
+                .last()
+        }
+    }
+    throw IllegalArgumentException("Version with name $versionVar not found in file")
+}

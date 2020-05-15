@@ -1,5 +1,7 @@
 package com.picpay.gradlelint.versioncheck.api
 
+import com.picpay.gradlelint.versioncheck.helpers.readTextFromResourceFile
+
 internal class FakeApi(
     private val source: Source,
     private val emptyResponse: String? = null
@@ -17,22 +19,18 @@ internal class FakeApi(
 
         val responseBody = when (source) {
             Source.GOOGLE -> {
-                readTextFromResourceFile("google_response.xml")
+                readTextFromResourceFile("response/google_response.xml")
             }
             Source.MAVEN_CENTRAL -> {
-                readTextFromResourceFile("maven_central_response.json")
+                readTextFromResourceFile("response/maven_central_response.json")
             }
             Source.JCENTER -> {
-                readTextFromResourceFile("jcenter_response.json")
+                readTextFromResourceFile("response/jcenter_response.json")
             }
             Source.JITPACK -> {
-                readTextFromResourceFile("jitpack_response.json")
+                readTextFromResourceFile("response/jitpack_response.json")
             }
         }
         return MavenRemoteResponse(responseBody)
-    }
-
-    private fun readTextFromResourceFile(filename: String): String {
-        return FakeApi::class.java.classLoader?.getResource(filename)!!.readText()
     }
 }

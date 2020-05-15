@@ -9,7 +9,7 @@ import java.net.URLConnection
 import java.nio.charset.StandardCharsets
 
 @Suppress("UnstableApiUsage")
-internal class Api(private val client: LintClient): ApiClient {
+internal class Api(private val client: LintClient) : ApiClient {
 
     override fun executeRequest(request: MavenRemoteRequest): MavenRemoteResponse? {
         var response: String? = null
@@ -22,14 +22,16 @@ internal class Api(private val client: LintClient): ApiClient {
                     InputStreamReader(inputStream, StandardCharsets.UTF_8)
                 )
 
-                response = bufferedReader.use { reader ->
-                    val sb = StringBuilder(1024)
-                    var line: String?
-                    while (reader.readLine().also { line = it } != null) {
-                        sb.append(line)
-                        sb.append('\n')
-                    }
-                    sb.toString()
+                response = bufferedReader.useLines { lines ->
+                    StringBuilder()
+                        .apply {
+                            with(lines.toList()) {
+                                forEachIndexed { index, line ->
+                                    append(line)
+                                    if (index < lastIndex) append('\n')
+                                }
+                            }
+                        }.toString()
                 }
             } finally {
                 client.closeConnection(connection)

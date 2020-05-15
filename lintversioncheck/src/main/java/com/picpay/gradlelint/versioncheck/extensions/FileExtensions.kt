@@ -4,32 +4,21 @@ import java.io.File
 
 private const val BUILD_SRC_MODULE = "buildSrc"
 
-internal fun File.findBuildSrcFromProjectDir(): File? {
+internal fun File.findBuildSrcFromProjectDir(buildSrcModuleName: String = BUILD_SRC_MODULE): File? {
     var dir: String? = parentFile?.absolutePath
     while (dir != null) {
         val currentDir = File(dir)
 
         val containsBuildSrc = currentDir.listFiles()
             ?.asList()
-            ?.any { it.name == BUILD_SRC_MODULE }
+            ?.any { it.name == buildSrcModuleName }
             ?: false
 
         if (containsBuildSrc) {
-            return File(currentDir.absolutePath, BUILD_SRC_MODULE)
+            return File(currentDir.absolutePath, buildSrcModuleName)
         } else {
             dir = currentDir.parentFile?.absolutePath
         }
     }
     return null
-}
-
-internal fun List<String>.getVarValueFromVersionsFile(versionVar: String): String {
-    forEach { line ->
-        if (line.contains(versionVar) && line.containsVersionNumber()) {
-            return line.tokenize("=")
-                .map { it.removeComments() }
-                .last()
-        }
-    }
-    throw IllegalArgumentException("Version with name $versionVar not found in file")
 }

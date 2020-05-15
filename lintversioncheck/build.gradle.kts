@@ -17,8 +17,9 @@ dependencies {
 
 val jar by tasks.getting(Jar::class) {
     manifest {
-        attributes["Manifest-Version"] =  1.0
-        attributes["Lint-Registry"] =  "com.picpay.gradlelint.versioncheck.GradleVersionCheckerRegistry"
+        attributes["Manifest-Version"] = 1.0
+        attributes["Lint-Registry"] =
+            "com.picpay.gradlelint.versioncheck.GradleVersionCheckerRegistry"
     }
 }
 
@@ -39,14 +40,17 @@ tasks {
         }
         into(System.getProperty("user.home") + "/.android/lint")
     }
-}
 
-tasks.test {
-    finalizedBy("jacocoTestReport")
-    doLast {
-        println("View code coverage at:")
-        println("file://$buildDir/reports/jacoco/test/html/index.html")
+    register("coverageReport", JacocoReport::class) {
+        group = "verification"
+        sourceDirectories.from("$projectDir/src/main/java")
+        classDirectories.from("$buildDir/classes/kotlin/main")
+        reports {
+            xml.isEnabled = true
+            html.isEnabled = true
+
+            xml.destination = file("$buildDir/jacoco/coverage.xml")
+        }
+        executionData.from("$buildDir/jacoco/test.exec")
     }
 }
-
-
