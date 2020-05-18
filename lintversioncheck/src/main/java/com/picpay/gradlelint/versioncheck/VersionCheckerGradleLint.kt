@@ -210,7 +210,7 @@ class VersionCheckerGradleLint : Detector(), Detector.GradleScanner {
 
         @JvmField
         val REMOTE_VERSION = Issue.create(
-            "PicPayVersionChecker",
+            "VersionCheckerGradleLint",
             "Newer Library Versions Available",
             "This detector checks with a central repository to see if there are newer" +
                     " versions available for the dependencies used by this project. " +
@@ -223,7 +223,7 @@ class VersionCheckerGradleLint : Detector(), Detector.GradleScanner {
             7,
             Severity.WARNING,
             IMPLEMENTATION
-        ).setEnabledByDefault(true)
+        ).setEnabledByDefault(false)
 
     }
 }

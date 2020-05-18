@@ -27,4 +27,10 @@ object TestLibs {
 ```
 
 ## How install?
-- Download ![jar](https://github.com/PicPay/version-checker-gradle-lint/releases/download/0.1.0/versioncheckerlint.jar), copy to `${USER_DIR}/.android/lint/` and enjoy!
+- Copy latest release `.jar` to `${USER_DIR}/.android/lint/`
+- Enable lint with `lintOptions`
+```groovy
+    lintOptions {
+        enable "VersionCheckerGradleLint"
+    }
+```

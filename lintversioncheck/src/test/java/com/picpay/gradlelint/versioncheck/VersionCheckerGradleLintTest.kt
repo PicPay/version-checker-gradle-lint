@@ -3,6 +3,7 @@ package com.picpay.gradlelint.versioncheck
 import com.android.tools.lint.client.api.LintDriver
 import com.android.tools.lint.client.api.LintRequest
 import com.android.tools.lint.detector.api.GradleContext
+import com.android.tools.lint.detector.api.assertionsEnabled
 import com.picpay.gradlelint.versioncheck.api.FakeLintClient
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -24,8 +25,11 @@ internal class VersionCheckerGradleLintTest {
         val currentDir = File("")
         val client = FakeLintClient("response/maven_central_response.json")
 
+        val registry = VersionCheckerGradleLintRegistry().apply {
+            issues.first().setEnabledByDefault(true)
+        }
         val driver = LintDriver(
-            registry = VersionCheckerGradleLintRegistry(),
+            registry = registry,
             client = client,
             request = LintRequest(client, listOf(currentDir))
         )
