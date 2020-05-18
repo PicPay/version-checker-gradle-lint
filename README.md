@@ -1,4 +1,4 @@
-# Gradle Version Checker
+# Version Checker Gradle Lint
 Warning on new versions available even when using Kotlin-DSL plugin.
 
 ![](example.png)

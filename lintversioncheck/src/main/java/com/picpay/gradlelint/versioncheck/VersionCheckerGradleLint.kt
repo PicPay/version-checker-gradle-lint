@@ -25,7 +25,7 @@ import java.util.Properties
 
 
 @Suppress("UnstableApiUsage")
-class VersionChecker : Detector(), Detector.GradleScanner {
+class VersionCheckerGradleLint : Detector(), Detector.GradleScanner {
 
     private var repositoryHandler: MavenRemoteRepositoryHandler? = null
     private var buildSrcDir: File? = null
@@ -204,7 +204,7 @@ class VersionChecker : Detector(), Detector.GradleScanner {
         private const val DEPENDENCIES = "dependencies"
 
         private val IMPLEMENTATION = Implementation(
-            VersionChecker::class.java,
+            VersionCheckerGradleLint::class.java,
             Scope.GRADLE_SCOPE
         )
 

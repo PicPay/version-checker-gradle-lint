@@ -19,7 +19,7 @@ val jar by tasks.getting(Jar::class) {
     manifest {
         attributes["Manifest-Version"] = 1.0
         attributes["Lint-Registry"] =
-            "com.picpay.gradlelint.versioncheck.GradleVersionCheckerRegistry"
+            "com.picpay.gradlelint.versioncheck.VersionCheckerGradleLintRegistry"
     }
 }
 

@@ -12,7 +12,7 @@ import org.junit.runners.JUnit4
 import java.io.File
 
 @RunWith(JUnit4::class)
-internal class VersionCheckerTest {
+internal class VersionCheckerGradleLintTest {
 
     /***
      * Integration Test (using fake API responses)
@@ -20,12 +20,12 @@ internal class VersionCheckerTest {
     @Suppress("UnstableApiUsage")
     @Test
     fun `when trigger with any dependency Should report message to IDE`() {
-        val versionChecker = VersionChecker()
+        val versionChecker = VersionCheckerGradleLint()
         val currentDir = File("")
         val client = FakeLintClient("response/maven_central_response.json")
 
         val driver = LintDriver(
-            registry = GradleVersionCheckerRegistry(),
+            registry = VersionCheckerGradleLintRegistry(),
             client = client,
             request = LintRequest(client, listOf(currentDir))
         )
