@@ -27,4 +27,4 @@ object TestLibs {
 ```
 
 ## How install?
-- Copy `.jar` to `${USER_DIR}/.android/lint/` and enjoy!
+- Download ![jar](https://github.com/PicPay/version-checker-gradle-lint/releases/download/0.1.0/versioncheckerlint.jar), copy to `${USER_DIR}/.android/lint/` and enjoy!
