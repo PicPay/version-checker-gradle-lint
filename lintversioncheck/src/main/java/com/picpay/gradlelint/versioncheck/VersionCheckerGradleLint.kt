@@ -87,7 +87,10 @@ class VersionCheckerGradleLint : Detector(), Detector.GradleScanner {
         val linesFromDependencyFile = getDependenciesFileLines(
             dependenciesFile = File(
                 getBuildSrcDir(context.project.dir).absolutePath,
-                "src/main/java/$dependenciesFileName.kt"
+                "src${File.separator}" +
+                        "main${File.separator}" +
+                        "java${File.separator}" +
+                        "$dependenciesFileName.kt"
             )
         )
 

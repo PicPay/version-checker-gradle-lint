@@ -3,6 +3,20 @@ Warning on new versions available even when using Kotlin-DSL plugin.
 
 ![](example.png)
 
+## How to use?
+- Add lint dependency
+```groovy
+dependencies {
+    lintChecks "com.picpay.gradlelint:version-checker:VERSION"
+}
+```
+- Enable lint with `lintOptions`
+```groovy
+lintOptions {
+    enable "VersionCheckerGradleLint"
+}
+```
+
 ## `buildSrc` module with kotlin-dsl plugin
 - `buildSrc/src/main/java/Dependencies.kt`
 ```kotlin
@@ -24,13 +38,4 @@ object TestLibs {
 
     val junit4 = "junit:junit:${Versions.junit4Version}"
 }
-```
-
-## How install?
-- Copy latest release `.jar` to `${USER_DIR}/.android/lint/`
-- Enable lint with `lintOptions`
-```groovy
-    lintOptions {
-        enable "VersionCheckerGradleLint"
-    }
 ```

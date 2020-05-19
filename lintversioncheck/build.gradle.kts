@@ -1,7 +1,11 @@
+import java.text.SimpleDateFormat
+import java.util.Date
+
 plugins {
     id("java-library")
     id("kotlin")
     id("jacoco")
+    id("maven-publish")
 }
 
 repositories {
@@ -53,4 +57,34 @@ tasks {
         }
         executionData.from("$buildDir/jacoco/test.exec")
     }
+}
+
+publishing {
+    publications {
+        register("publishArtifact", MavenPublication::class) {
+            from(components["java"])
+            groupId = project.findProperty("library.groupId") as String
+            artifactId = project.findProperty("library.artifactId") as String
+            version = (project.findProperty("library.version") as String) + versionSuffix()
+        }
+    }
+    repositories {
+        maven {
+            name = "GitHubPackages"
+            val repository = project.findProperty("library.repository")
+            url = uri("https://maven.pkg.github.com/PicPay/$repository")
+            credentials {
+                username = System.getenv("GITHUB_USER")
+                password = System.getenv("GITHUB_USER_TOKEN")
+            }
+        }
+    }
+}
+
+fun versionSuffix(): String {
+    val sufix = System.getenv("VERSION_SUFIX").orEmpty()
+    if (sufix.isNotEmpty()) {
+        return "$sufix-${SimpleDateFormat("yyyyMMddHHmmss").format(Date())}"
+    }
+    return sufix
 }
