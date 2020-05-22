@@ -10,7 +10,6 @@ internal fun File.findBuildSrcFromProjectDir(buildSrcModuleName: String = BUILD_
         val currentDir = File(dir)
 
         val containsBuildSrc = currentDir.listFiles()
-            ?.asList()
             ?.any { it.name == buildSrcModuleName }
             ?: false
 
@@ -21,4 +20,19 @@ internal fun File.findBuildSrcFromProjectDir(buildSrcModuleName: String = BUILD_
         }
     }
     return null
+}
+
+internal fun File.findKotlinFilesWithSuffix(suffix: List<String>): Map<String, File> {
+    val kotlinFilesMap = mutableMapOf<String, File>()
+    return if (!this.isDirectory) emptyMap()
+    else {
+        listFiles()?.forEach { file ->
+            if (file.isDirectory) {
+                kotlinFilesMap.putAll(file.findKotlinFilesWithSuffix(suffix))
+            } else if (file.isFile && suffix.any { file.name.endsWith("$it.kt") }) {
+                kotlinFilesMap[file.nameWithoutExtension] = file
+            }
+        }
+        kotlinFilesMap
+    }
 }

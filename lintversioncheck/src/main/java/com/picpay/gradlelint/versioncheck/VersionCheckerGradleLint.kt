@@ -11,6 +11,7 @@ import com.picpay.gradlelint.versioncheck.api.Api
 import com.picpay.gradlelint.versioncheck.cache.RepositoryCache
 import com.picpay.gradlelint.versioncheck.extensions.containsVersionNumber
 import com.picpay.gradlelint.versioncheck.extensions.findBuildSrcFromProjectDir
+import com.picpay.gradlelint.versioncheck.extensions.findKotlinFilesWithSuffix
 import com.picpay.gradlelint.versioncheck.extensions.getVarNameInVersionDeclaration
 import com.picpay.gradlelint.versioncheck.extensions.getVarValueFromVersionsFileLines
 import com.picpay.gradlelint.versioncheck.extensions.isVersionNumber
@@ -30,7 +31,7 @@ class VersionCheckerGradleLint : Detector(), Detector.GradleScanner {
     private var repositoryHandler: MavenRemoteRepositoryHandler? = null
     private var buildSrcDir: File? = null
     private var versionsProperties: Properties? = null
-    private var dependenciesFileLines = emptyList<String>()
+    private var buildSrcKotlinFiles = mutableMapOf<String, File>()
 
     override fun checkDslPropertyAssignment(
         context: GradleContext,
@@ -73,49 +74,48 @@ class VersionCheckerGradleLint : Detector(), Detector.GradleScanner {
     ): Library? {
 
         val properties = readVersionCheckerProperties(context.project.dir)
-        val dependenciesFileName = properties.getProperty(LINT_DEPENDENCIES_PROPERTY)
-        val versionsFile = properties.getProperty(LINT_VERSIONS_PROPERTY)
+        val versionsFileName = properties.getProperty(LINT_VERSIONS_PROPERTY)
+        val suffix = properties.getProperty(LINT_SUFFIX_PROPERTY)
 
         val enableCheckForPreReleases: Boolean = properties
             .getProperty(LINT_ENABLE_CHECK_PRE_RELEASES)
             ?.toBoolean() ?: false
 
-        if (versionsFile != dependenciesFileName) {
-            //TODO: fazer a busca em arquivos diferentes
-        }
-
-        val linesFromDependencyFile = getDependenciesFileLines(
-            dependenciesFile = File(
-                getBuildSrcDir(context.project.dir).absolutePath,
-                "src${File.separator}" +
-                        "main${File.separator}" +
-                        "java${File.separator}" +
-                        "$dependenciesFileName.kt"
-            )
+        val librariesKotlinFiles = getMapOfKotlinFilesFromBuildSrc(
+            buildSrcDir = getBuildSrcDir(context.project.dir),
+            librariesFileSuffix = suffix,
+            versionFileName = versionsFileName
         )
+
+        val nameToFindLibDeclaration = value.split(".").first()
+        val libraryDeclarationFile: File = librariesKotlinFiles[nameToFindLibDeclaration] ?: return null
+        val versionDeclarationFile: File = librariesKotlinFiles[versionsFileName] ?: return null
 
         return extractLibraryFromFileLines(
             valueInGradle = value,
-            fileLines = linesFromDependencyFile,
+            libraryDeclarationFile = libraryDeclarationFile,
+            versionDeclarationFile = versionDeclarationFile,
             enableCheckForPreReleases = enableCheckForPreReleases
         )
     }
 
     private fun extractLibraryFromFileLines(
         valueInGradle: String,
-        fileLines: List<String>,
+        libraryDeclarationFile: File,
+        versionDeclarationFile: File,
         enableCheckForPreReleases: Boolean
     ): Library? {
 
         var extractedLibrary: Library? = null
+        val libraryDeclarationFileLines = libraryDeclarationFile.readLines()
 
-        fileLines.forEachIndexed { index, line ->
+        libraryDeclarationFileLines.forEachIndexed { index, line ->
 
             val dependencyVarName = valueInGradle.split(".")[1]
             if (line.tokenize().contains(dependencyVarName) && !line.containsVersionNumber()) {
 
                 val dependency = if (!line.contains("$")) {
-                    dependenciesFileLines[index + 1].removeComments()
+                    libraryDeclarationFileLines[index + 1].removeComments()
                 } else {
                     line.split("=")[1].removeComments()
                 }
@@ -126,7 +126,9 @@ class VersionCheckerGradleLint : Detector(), Detector.GradleScanner {
                     .trim()
 
                 val versionVarName = dependencyCleaned[1].getVarNameInVersionDeclaration()
-                val versionNumber = fileLines.getVarValueFromVersionsFileLines(versionVarName)
+                val versionNumber = versionDeclarationFile.readLines()
+                    .getVarValueFromVersionsFileLines(versionVarName)
+
                 val version = versionNumber.replace("\"", "")
 
                 if (version.isVersionNumber(enableCheckForPreReleases)) {
@@ -138,11 +140,17 @@ class VersionCheckerGradleLint : Detector(), Detector.GradleScanner {
         return extractedLibrary
     }
 
-    private fun getDependenciesFileLines(dependenciesFile: File): List<String> {
-        if (dependenciesFileLines.isEmpty()) {
-            dependenciesFileLines = dependenciesFile.readLines()
+    private fun getMapOfKotlinFilesFromBuildSrc(
+        buildSrcDir: File,
+        librariesFileSuffix: String,
+        versionFileName: String
+    ): Map<String, File> {
+        if (buildSrcKotlinFiles.isEmpty()) {
+            val whatToFind = listOf(librariesFileSuffix, versionFileName)
+            buildSrcDir.findKotlinFilesWithSuffix(whatToFind)
+                .also { fileMap -> buildSrcKotlinFiles.putAll(fileMap) }
         }
-        return dependenciesFileLines
+        return buildSrcKotlinFiles
     }
 
     private fun readVersionCheckerProperties(projectDir: File): Properties {
@@ -153,8 +161,8 @@ class VersionCheckerGradleLint : Detector(), Detector.GradleScanner {
             )
             Properties().apply {
                 if (!versionLintPropertiesFile.exists()) {
-                    put(LINT_DEPENDENCIES_PROPERTY, "Dependencies")
                     put(LINT_SUFFIX_PROPERTY, "Libs")
+                    put(LINT_VERSIONS_PROPERTY, "Versions")
                     put(LINT_ENABLE_CHECK_PRE_RELEASES, "false")
                     put(LINT_CACHE_LIFETIME, "60")
                     store(
@@ -198,7 +206,6 @@ class VersionCheckerGradleLint : Detector(), Detector.GradleScanner {
     companion object {
 
         private const val LINT_PROPERTIES = "versionlint.properties"
-        private const val LINT_DEPENDENCIES_PROPERTY = "versionlint.dependencies.file"
         private const val LINT_SUFFIX_PROPERTY = "versionlint.dependencies.suffix"
         private const val LINT_VERSIONS_PROPERTY = "versionlint.versions.file"
         private const val LINT_ENABLE_CHECK_PRE_RELEASES = "versionlint.prerelease.enable"
@@ -226,7 +233,7 @@ class VersionCheckerGradleLint : Detector(), Detector.GradleScanner {
             7,
             Severity.WARNING,
             IMPLEMENTATION
-        ).setEnabledByDefault(false)
+        ).setEnabledByDefault(true)
 
     }
 }
