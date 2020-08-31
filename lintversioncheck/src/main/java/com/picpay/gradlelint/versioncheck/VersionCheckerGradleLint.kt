@@ -17,6 +17,7 @@ import com.picpay.gradlelint.versioncheck.extensions.getVarValueFromVersionsFile
 import com.picpay.gradlelint.versioncheck.extensions.isVersionNumber
 import com.picpay.gradlelint.versioncheck.extensions.removeComments
 import com.picpay.gradlelint.versioncheck.extensions.tokenize
+import com.picpay.gradlelint.versioncheck.extensions.tokenizeCodeLine
 import com.picpay.gradlelint.versioncheck.library.Library
 import com.picpay.gradlelint.versioncheck.library.toLibrary
 import com.picpay.gradlelint.versioncheck.repositories.MavenRemoteRepositoryHandler
@@ -112,7 +113,7 @@ class VersionCheckerGradleLint : Detector(), Detector.GradleScanner {
         libraryDeclarationFileLines.forEachIndexed { index, line ->
 
             val dependencyVarName = valueInGradle.split(".")[1]
-            if (line.tokenize().contains(dependencyVarName) && !line.containsVersionNumber()) {
+            if (line.tokenizeCodeLine().contains(dependencyVarName) && !line.containsVersionNumber()) {
 
                 val dependency = if (!line.contains("$")) {
                     libraryDeclarationFileLines[index + 1].removeComments()

@@ -21,6 +21,17 @@ internal class StringExtensionsTest {
     }
 
     @Test
+    fun `tokenizeCodeLine Should return string list cleaned When called with unformatted string`() {
+        val source = "const val value1: String\nvar value2 \nval value3"
+
+        val expected = listOf("value1", "value2", "value3")
+
+        val list = source.tokenizeCodeLine()
+
+        assertEquals(expected, list)
+    }
+
+    @Test
     fun `removeComments Should return string with comments When called with comments`() {
         val source = "value1 // value 2"
 

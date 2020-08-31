@@ -5,6 +5,16 @@ internal fun String.tokenize(delimiter: String = " "): List<String> {
         .map { it.replace("\n", "").trim() }
 }
 
+internal fun String.tokenizeCodeLine(): List<String> {
+    return this.replace("String","")
+        .replace(":","")
+        .replace("const ","")
+        .replace("val ","")
+        .replace("var ","")
+        .replace("\n", "")
+        .tokenize()
+}
+
 internal fun String.removeComments(): String {
     return if (contains("//")) {
         split("//")[0].trim()
