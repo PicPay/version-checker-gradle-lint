@@ -13,9 +13,10 @@ repositories {
 }
 
 dependencies {
-    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.3.72")
-    implementation("com.android.tools.lint:lint-api:26.6.3")
-    implementation("com.android.tools.lint:lint-checks:26.6.3")
+    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.4.10")
+    implementation("org.jetbrains.kotlin:kotlin-reflect:1.4.10")
+    implementation("com.android.tools.lint:lint-api:27.0.2")
+    implementation("com.android.tools.lint:lint-checks:27.0.2")
     testImplementation("junit:junit:4.13")
 }
 

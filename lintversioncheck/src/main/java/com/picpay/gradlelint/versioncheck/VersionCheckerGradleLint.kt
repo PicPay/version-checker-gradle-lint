@@ -16,7 +16,6 @@ import com.picpay.gradlelint.versioncheck.extensions.getVarNameInVersionDeclarat
 import com.picpay.gradlelint.versioncheck.extensions.getVarValueFromVersionsFileLines
 import com.picpay.gradlelint.versioncheck.extensions.isVersionNumber
 import com.picpay.gradlelint.versioncheck.extensions.removeComments
-import com.picpay.gradlelint.versioncheck.extensions.tokenize
 import com.picpay.gradlelint.versioncheck.extensions.tokenizeCodeLine
 import com.picpay.gradlelint.versioncheck.library.Library
 import com.picpay.gradlelint.versioncheck.library.toLibrary
@@ -80,7 +79,7 @@ class VersionCheckerGradleLint : Detector(), Detector.GradleScanner {
 
         val enableCheckForPreReleases: Boolean = properties
             .getProperty(LINT_ENABLE_CHECK_PRE_RELEASES)
-            ?.toBoolean() ?: false
+            .toBoolean()
 
         val librariesKotlinFiles = getMapOfKotlinFilesFromBuildSrc(
             buildSrcDir = getBuildSrcDir(context.project.dir),
