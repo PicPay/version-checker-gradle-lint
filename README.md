@@ -1,4 +1,6 @@
-# Version Checker Gradle Lint
+# Version Checker Gradle Lint 
+[![](https://androidweekly.net/issues/issue-436/badge)](https://androidweekly.net/issues/issue-436)
+
 Warning on new versions available even when using Kotlin-DSL plugin.
 
 ![](example.png)
